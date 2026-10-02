@@ -15,7 +15,7 @@ depends=('mpv' 'python' 'python-yandex-music-api>=3.0.0'
          'python-dbus-next' 'python-requests')
 install="$pkgname.install"
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('SKIP')
+sha256sums=('ef3c8b9b009260a2334a59f0cedf61bc32e9ab3f73d1554132324fb2396a85c4')
 
 package() {
   cd "$srcdir/noctalia-yandex-music-$pkgver"
