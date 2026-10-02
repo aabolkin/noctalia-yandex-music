@@ -1,0 +1,37 @@
+# Maintainer: Alexander Abolkin <aabolkin@fil-it.ru>
+
+pkgname=noctalia-plugin-yandex-music
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="Плеер Яндекс Музыки для Noctalia: виджет рабочего стола, поиск с коллекциями, MPRIS"
+arch=('any')
+url="https://github.com/aabolkin/noctalia-yandex-music"
+license=('MIT')
+# Библиотеки берутся из системы: пакет не может нести собственный venv.
+# Сам шелл в зависимостях не указан намеренно: noctalia v5 лежит в репозитории
+# CachyOS, а в Arch и AUR под этим именем его нет — зависимость оказалась бы
+# неразрешимой. Нужен Noctalia v5 любой сборки (noctalia или noctalia-git).
+depends=('mpv' 'python' 'python-yandex-music-api>=3.0.0'
+         'python-dbus-next' 'python-requests')
+install="$pkgname.install"
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+package() {
+  cd "$srcdir/noctalia-yandex-music-$pkgver"
+
+  local plugin_dir="$pkgdir/usr/share/noctalia-plugins/yandex-music"
+  install -Dm644 plugin.toml "$plugin_dir/plugin.toml"
+  for entry in *.luau; do
+    install -Dm644 "$entry" "$plugin_dir/$entry"
+  done
+  for entry in translations/*.json; do
+    install -Dm644 "$entry" "$plugin_dir/$entry"
+  done
+  for entry in scripts/*.py; do
+    install -Dm644 "$entry" "$plugin_dir/$entry"
+  done
+
+  install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

@@ -1,0 +1,24 @@
+post_install() {
+  cat <<'MSG'
+
+Плагин установлен в /usr/share/noctalia-plugins/yandex-music.
+
+Noctalia ищет плагины только в зарегистрированных источниках, поэтому один раз:
+
+  noctalia msg plugins source add system path /usr/share/noctalia-plugins
+  noctalia msg plugins enable alex/yandex-music
+
+И разовая авторизация в Яндексе (положит токен в
+~/.config/noctalia/yandex-music-token с правами 600):
+
+  python3 /usr/share/noctalia-plugins/yandex-music/scripts/ym_auth.py
+
+Карточку на рабочий стол добавляют в редакторе виджетов:
+  noctalia msg desktop-widgets-edit
+
+MSG
+}
+
+post_upgrade() {
+  echo "Плагин обновлён. Перезапустить демон: noctalia msg plugin alex/yandex-music:service all restart"
+}

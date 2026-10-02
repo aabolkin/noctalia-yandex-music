@@ -21,8 +21,17 @@ local function dataDir()
 end
 
 local function pythonPath()
+  -- Installed from git the plugin carries its own .venv; installed from a
+  -- package it cannot, and the libraries come from the system instead.
+  -- pyvenv.cfg is the cheapest proof that the venv is really there.
   local dir = noctalia.pluginDir()
-  return (dir and (dir .. "/") or "") .. ".venv/bin/python"
+  if dir then
+    local marker = noctalia.readFile(dir .. "/.venv/pyvenv.cfg")
+    if marker and marker ~= "" then
+      return dir .. "/.venv/bin/python"
+    end
+  end
+  return "python3"
 end
 
 local function scriptPath()
