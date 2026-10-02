@@ -1,0 +1,79 @@
+# Yandex Music: this machine plays, mpv makes the sound, the widget steers it.
+
+id = "alex/yandex-music"
+name = "Yandex Music"
+version = "1.0.0"
+plugin_api = 24
+author = "alex"
+license = "MIT"
+icon = "music"
+description = "Local Yandex Music player: cover, track, progress, transport controls and an MPRIS entry in the media panel."
+tags = ["desktop", "service", "media", "network"]
+dependencies = ["python3", "mpv"]
+
+[[setting]]
+key = "token_file"
+type = "string"
+label_key = "settings.token_file.label"
+description_key = "settings.token_file.description"
+default = "~/.config/noctalia/yandex-music-token"
+
+[[setting]]
+key = "source"
+type = "select"
+label_key = "settings.source.label"
+description_key = "settings.source.description"
+default = "wave"
+options = [
+  { value = "wave", label_key = "settings.source.options.wave" },
+  { value = "likes", label_key = "settings.source.options.likes" }
+]
+
+[[setting]]
+key = "volume"
+type = "int"
+label_key = "settings.volume.label"
+description_key = "settings.volume.description"
+default = 70
+min = 0
+max = 100
+step = 5
+
+[[setting]]
+key = "show_cover"
+type = "bool"
+label_key = "settings.show_cover.label"
+description_key = "settings.show_cover.description"
+default = true
+
+[[setting]]
+key = "show_progress"
+type = "bool"
+label_key = "settings.show_progress.label"
+description_key = "settings.show_progress.description"
+default = true
+
+[[setting]]
+key = "show_like"
+type = "bool"
+label_key = "settings.show_like.label"
+description_key = "settings.show_like.description"
+default = true
+
+[[desktop_widget]]
+id = "player"
+entry = "desktop.luau"
+
+[[panel]]
+id = "search"
+entry = "panel.luau"
+width = 520
+height = 600
+placement = "floating"
+position = "center"
+keyboard_focus = "exclusive"
+capture_keys = ["Up", "Down", "Return"]
+
+[[service]]
+id = "service"
+entry = "service.luau"

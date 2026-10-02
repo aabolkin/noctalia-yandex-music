@@ -1,0 +1,72 @@
+{
+  "search": {
+    "back": "Back",
+    "forget_query": "Right click to remove from recent",
+    "wave": "My Wave",
+    "wave_subtitle": "An endless stream to your taste",
+    "button": "Search",
+    "count": "{total} found",
+    "empty": "Nothing found",
+    "error": "Search failed: {message}",
+    "filter": "Filter this collection",
+    "hint": "Type a query and press Enter",
+    "like": "Like",
+    "likes_all": "Liked tracks",
+    "loading": "Searching…",
+    "more": "More",
+    "placeholder": "Track or artist",
+    "play": "Play now",
+    "play_all": "Play all in order",
+    "queue": "Play next",
+    "radio": "Start radio",
+    "section": {
+      "albums": "ALBUMS",
+      "artists": "ARTISTS",
+      "collections": "COLLECTIONS",
+      "likes": "FROM YOUR LIKES",
+      "playlists": "PLAYLISTS",
+      "recent": "RECENT SEARCHES",
+      "tracks": "TRACKS"
+    },
+    "title": "Search Yandex Music",
+    "tracks_count": "{count} tracks",
+    "unlike": "Remove like"
+  },
+  "settings": {
+    "show_cover": {
+      "description": "Show the track cover",
+      "label": "Cover art"
+    },
+    "show_like": {
+      "description": "Like button for the current track",
+      "label": "Like"
+    },
+    "show_progress": {
+      "description": "Progress bar and timings",
+      "label": "Progress"
+    },
+    "source": {
+      "description": "What play starts",
+      "label": "Source",
+      "options": {
+        "likes": "Liked tracks (shuffled)",
+        "wave": "My Wave"
+      }
+    },
+    "token_file": {
+      "description": "Where ym_auth.py stored the OAuth token",
+      "label": "Token file"
+    },
+    "volume": {
+      "description": "mpv start volume, %",
+      "label": "Volume"
+    }
+  },
+  "status": {
+    "error": "Error: {message}",
+    "idle": "Press play to start My Wave",
+    "no_device": "No active device - start playback somewhere",
+    "no_token": "Authorisation needed: run ym_auth.py in a terminal",
+    "starting": "Connecting to Yandex Music…"
+  }
+}
