@@ -26,7 +26,7 @@ import threading
 import time
 
 import requests
-from yandex_music import Client
+from yandex_music import Client, StationTracksResult
 
 try:
     import ym_mpris
@@ -424,6 +424,37 @@ class Player:
         self.queries = [q for q in self.queries if q.casefold() != query.casefold()]
         self.save_side_file(HISTORY_FILE, self.queries)
 
+    def fetch_wave(self):
+        """Ask My Wave for the next batch.
+
+        The library's rotor call drops ``settings2`` as soon as ``queue`` is
+        set, and Yandex then answers ``condition is not met``. A plain
+        ``settings2=true`` request is what the station actually accepts.
+        The handshake to api.music.yandex.net also drops often, so retry.
+        """
+        url = f"{self.client.base_url}/rotor/station/{self.station}/tracks"
+        last = None
+        for attempt in range(3):
+            try:
+                # A cold station answers "condition is not met" until it is told
+                # that playback started. One notice is enough; then tracks come.
+                if attempt > 0 and not self.started:
+                    self.client.rotor_station_feedback_radio_started(
+                        self.station, f"desktop-noctalia-{int(time.time())}"
+                    )
+                    self.started = True
+                raw = self.client._request.get(url, {"settings2": "true"})
+                batch = StationTracksResult.de_json(raw, self.client)
+                if batch and batch.sequence:
+                    log(f"волна: {len(batch.sequence)} треков")
+                    return batch
+                last = RuntimeError("пустая волна")
+            except Exception as exc:  # noqa: BLE001 - TLS drops and a cold station both happen
+                last = exc
+                log(f"волна попытка {attempt + 1}: {exc}")
+            time.sleep(2 * (attempt + 1))
+        raise last
+
     def fill_queue(self):
         """Top the queue up from the configured source."""
         if self.queue:
@@ -453,29 +484,48 @@ class Player:
                 for track in self.client.tracks(ids[:20]):
                     self.queue.append(track)
             else:
-                last = self.current.id if self.current else None
-                batch = self.client.rotor_station_tracks(
-                    self.station, settings2=True, queue=last
-                )
+                if time.time() < getattr(self, "wave_retry_at", 0):
+                    return
+                batch = self.fetch_wave()
                 self.batch_id = batch.batch_id
-                if not self.started:
-                    self.client.rotor_station_feedback_radio_started(
-                        self.station, f"desktop-noctalia-{int(time.time())}"
-                    )
-                    self.started = True
                 for item in batch.sequence:
                     if item.track:
                         self.queue.append(item.track)
+                # Tracks are already in hand. Telling the station that playback
+                # started can fail with "condition is not met" and must not
+                # throw the batch away.
+                if not self.started:
+                    self.started = True
+                    try:
+                        self.client.rotor_station_feedback_radio_started(
+                            self.station, f"desktop-noctalia-{int(time.time())}"
+                        )
+                    except Exception as exc:  # noqa: BLE001
+                        log(f"фидбэк старта волны: {exc}")
         except Exception as e:  # noqa: BLE001
+            self.wave_retry_at = time.time() + 12
             self.fail(f"не удалось получить треки: {e}")
 
     def stream_url(self, track):
         # get_direct_links=True resolves a link for every bitrate variant, one
         # HTTP request each, and the low-bitrate one is often the slow one. We
         # play exactly one of them, so only that one is worth resolving.
-        variants = self.client.tracks_download_info(track.track_id)
-        best = max(variants, key=lambda i: i.bitrate_in_kbps or 0, default=None)
-        return best.get_direct_link() if best else ""
+        # The handshake to Yandex drops often, so the lookup is retried.
+        last = None
+        for attempt in range(4):
+            try:
+                variants = self.client.tracks_download_info(track.track_id)
+                best = max(variants, key=lambda i: i.bitrate_in_kbps or 0, default=None)
+                link = best.get_direct_link() if best else ""
+                if link:
+                    return link
+                last = RuntimeError("нет ссылки")
+            except Exception as exc:  # noqa: BLE001
+                last = exc
+                time.sleep(0.6 * (attempt + 1))
+        if last:
+            raise last
+        return ""
 
     def cover_path(self, track):
         uri = getattr(track, "cover_uri", None)
@@ -878,6 +928,7 @@ class Player:
         self.station = WAVE_STATION
         self.started = False
         self.source = "wave"
+        self.wave_retry_at = 0
         self.queue.clear()
         self.prefetched.clear()
         self.advance(remember=True)
