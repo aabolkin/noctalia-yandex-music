@@ -266,6 +266,7 @@ class Player:
         self.alive_file = data_dir / "service.alive"
         self.saw_service = False
         self.station = WAVE_STATION   # "моя волна" или радио по конкретному треку
+        self.wave_retry_at = 0        # до этого момента волну не дёргаем
         self.found = {"query": "", "status": "idle", "items": []}
         self.hints = {"query": "", "items": []}
         self.known = {}          # id -> Track из выдачи, чтобы не ходить за ним снова
@@ -427,12 +428,16 @@ class Player:
     def fetch_wave(self):
         """Ask My Wave for the next batch.
 
-        The library's rotor call drops ``settings2`` as soon as ``queue`` is
-        set, and Yandex then answers ``condition is not met``. A plain
-        ``settings2=true`` request is what the station actually accepts.
+        The library's rotor call *overwrites* the params instead of adding to
+        them, so ``queue`` throws ``settings2`` away and Yandex answers
+        ``condition is not met``. Sending both is what the station wants: the
+        id of the track that just played keeps the wave from repeating itself.
         The handshake to api.music.yandex.net also drops often, so retry.
         """
         url = f"{self.client.base_url}/rotor/station/{self.station}/tracks"
+        params = {"settings2": "True"}
+        if self.current is not None:
+            params["queue"] = self.current.id
         last = None
         for attempt in range(3):
             try:
@@ -443,7 +448,7 @@ class Player:
                         self.station, f"desktop-noctalia-{int(time.time())}"
                     )
                     self.started = True
-                raw = self.client._request.get(url, {"settings2": "true"})
+                raw = self.client._request.get(url, params)
                 batch = StationTracksResult.de_json(raw, self.client)
                 if batch and batch.sequence:
                     log(f"волна: {len(batch.sequence)} треков")
@@ -484,7 +489,7 @@ class Player:
                 for track in self.client.tracks(ids[:20]):
                     self.queue.append(track)
             else:
-                if time.time() < getattr(self, "wave_retry_at", 0):
+                if time.time() < self.wave_retry_at:
                     return
                 batch = self.fetch_wave()
                 self.batch_id = batch.batch_id

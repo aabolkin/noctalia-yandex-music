@@ -10,20 +10,15 @@ local PANEL_ID = "alex/yandex-music:search"
 local WAVE_STATION = "user:onyourwave"
 local COMMAND_FILE = "command.json"
 
--- The host owns the tile size. Content is measured from that box so the
--- cover, the progress bar and the buttons fill it instead of a fixed 320px.
+-- The host owns the tile size and the plugin API has no way to ask for it,
+-- so nothing here measures the box: the root row already fills it, and the
+-- text column takes what the cover and the buttons leave with flexGrow.
+-- Labels are the exception - they ignore width - so they keep a maxWidth
+-- wide enough for a roomy card and elide on a narrow one.
 local PAD = 12
 local GAP = 12
-
-local function widgetBox()
-  local text = noctalia.readFile("/home/lkni/.local/state/noctalia/settings.toml") or ""
-  local section = text:match("%[desktop_widgets%.widget%.yandex_player%](.-)\n%[") or ""
-  local w = tonumber(section:match("box_width%s*=%s*([%d%.]+)")) or 0
-  local h = tonumber(section:match("box_height%s*=%s*([%d%.]+)")) or 0
-  if w < 160 then w = 480 end
-  if h < 96 then h = 208 end
-  return w, h
-end
+local COVER_SIZE = 112
+local TEXT_MAX = 320
 -- How far from the current position a slider change has to land to count as a
 -- gesture. On a 320px bar this is about four pixels, below aiming precision.
 local ECHO_SECONDS = 2
@@ -163,25 +158,12 @@ render = function()
     return
   end
 
-  local boxW, boxH = widgetBox()
   local showCover = noctalia.getConfig("show_cover") ~= false and (state.cover or "") ~= ""
   local showProgress = noctalia.getConfig("show_progress") ~= false
   local showLike = noctalia.getConfig("show_like") ~= false
-  local buttonCount = 5 + (showLike and 1 or 0)
-  local buttonGap = 10
-  local innerH = math.max(96, boxH - PAD * 2)
-  -- Buttons keep a real hit box. The cover takes whatever width is left.
-  buttonSide = 40
-  local buttonsW = buttonCount * buttonSide + buttonGap * (buttonCount - 1)
-  local cover = 0
-  if showCover then
-    local room = boxW - PAD * 2 - GAP - buttonsW
-    cover = math.min(innerH, math.max(72, room))
-  end
-  local contentW = boxW - PAD * 2 - (cover > 0 and (cover + GAP) or 0)
-  if contentW < buttonsW then
-    buttonSide = math.max(28, math.floor((contentW - buttonGap * (buttonCount - 1)) / buttonCount))
-  end
+  local buttonGap = 6
+  buttonSide = 30   -- шесть кнопок с зазорами укладываются в узкую карточку
+  local cover = COVER_SIZE
 
   local details = {}
   table.insert(details, ui.label({
@@ -189,12 +171,12 @@ render = function()
     fontSize = 14,
     fontWeight = "bold",
     maxLines = 1,
+    maxWidth = TEXT_MAX,
   }))
   local artists = state.artists
   if type(artists) == "table" and #artists > 1 then
     table.insert(details, artistLinks.line({
       artists = artists,
-      width = contentW,
       fontSize = 11,
       color = "on_surface_variant",
       key = "artists",
@@ -227,7 +209,6 @@ render = function()
     }))
     table.insert(details, ui.slider({
       key = "seek",
-      width = contentW,
       height = 16,
       controlSize = "sm",
         min = 0,
@@ -283,6 +264,8 @@ render = function()
       onClick = function() send("like_toggle") end,
     }))
   end
+  -- Wave and search pick what to play rather than steer it: they keep apart.
+  table.insert(controls, ui.spacer({ key = "controls-gap", flexGrow = 1 }))
   table.insert(controls, waveButton())
   table.insert(controls, ui.button({
     key = "search",
@@ -294,7 +277,7 @@ render = function()
     controlSize = "sm",
     onClick = function() noctalia.togglePanel("alex/yandex-music:search") end,
   }))
-  table.insert(details, ui.row({ gap = buttonGap, align = "center", width = contentW }, controls))
+  table.insert(details, ui.row({ gap = buttonGap, align = "center" }, controls))
 
   if (state.commandError or "") ~= "" then
     table.insert(details, ui.label({
@@ -302,10 +285,11 @@ render = function()
       fontSize = 9,
       color = "error",
       maxLines = 1,
+      maxWidth = TEXT_MAX,
     }))
   end
 
-  local body = { ui.column({ width = contentW, gap = 4, justify = "center" }, details) }
+  local body = { ui.column({ flexGrow = 1, gap = 4, justify = "center" }, details) }
   if showCover then
     table.insert(body, 1, ui.row({ key = "cover", onClick = function() openArtist() end }, {
       ui.image({
@@ -319,8 +303,7 @@ render = function()
   end
 
   desktopWidget.render(ui.row({
-    width = boxW,
-    height = boxH,
+    flexGrow = 1,
     gap = GAP,
     padding = PAD,
     radius = 14,
@@ -331,17 +314,6 @@ render = function()
 end
 
 render()
-
-local seenW, seenH = 0, 0
-function update()
-  local w, h = widgetBox()
-  if w == seenW and h == seenH then return end
-  seenW, seenH = w, h
-  render()
-end
-if noctalia.setUpdateInterval then
-  noctalia.setUpdateInterval(500)
-end
 
 noctalia.state.watch(STATE_KEY, function(value)
   if type(value) ~= "table" then return end
