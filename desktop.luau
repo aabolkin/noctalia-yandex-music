@@ -10,15 +10,17 @@ local PANEL_ID = "alex/yandex-music:search"
 local WAVE_STATION = "user:onyourwave"
 local COMMAND_FILE = "command.json"
 
--- The host owns the tile size and the plugin API has no way to ask for it,
--- so nothing here measures the box: the root row already fills it, and the
--- text column takes what the cover and the buttons leave with flexGrow.
--- Labels are the exception - they ignore width - so they keep a maxWidth
--- wide enough for a roomy card and elide on a narrow one.
+-- The plugin API cannot tell a widget how big its tile is, and the card does
+-- not clip: content wider than the box simply spills out of it. So the sizes
+-- are fixed to the 480x144 tile the plugin ships with -
+-- 12 padding + 112 cover + 12 gap + 320 column + 12 padding = 468.
+-- Nothing here may be left to flexGrow: a growing child has no bound to stop
+-- against and pushes the rest of the row out of sight.
 local PAD = 12
 local GAP = 12
 local COVER_SIZE = 112
-local TEXT_MAX = 320
+local CONTENT_WIDTH = 320
+local TEXT_MAX = CONTENT_WIDTH
 -- How far from the current position a slider change has to land to count as a
 -- gesture. On a 320px bar this is about four pixels, below aiming precision.
 local ECHO_SECONDS = 2
@@ -177,6 +179,7 @@ render = function()
   if type(artists) == "table" and #artists > 1 then
     table.insert(details, artistLinks.line({
       artists = artists,
+      width = CONTENT_WIDTH,
       fontSize = 11,
       color = "on_surface_variant",
       key = "artists",
@@ -209,6 +212,7 @@ render = function()
     }))
     table.insert(details, ui.slider({
       key = "seek",
+      width = CONTENT_WIDTH,
       height = 16,
       controlSize = "sm",
         min = 0,
@@ -277,7 +281,8 @@ render = function()
     controlSize = "sm",
     onClick = function() noctalia.togglePanel("alex/yandex-music:search") end,
   }))
-  table.insert(details, ui.row({ gap = buttonGap, align = "center" }, controls))
+  table.insert(details, ui.row({ gap = buttonGap, align = "center",
+                                 width = CONTENT_WIDTH }, controls))
 
   if (state.commandError or "") ~= "" then
     table.insert(details, ui.label({
@@ -289,7 +294,7 @@ render = function()
     }))
   end
 
-  local body = { ui.column({ flexGrow = 1, gap = 4, justify = "center" }, details) }
+  local body = { ui.column({ width = CONTENT_WIDTH, gap = 4, justify = "center" }, details) }
   if showCover then
     table.insert(body, 1, ui.row({ key = "cover", onClick = function() openArtist() end }, {
       ui.image({
@@ -303,6 +308,7 @@ render = function()
   end
 
   desktopWidget.render(ui.row({
+    key = "card",
     flexGrow = 1,
     gap = GAP,
     padding = PAD,
