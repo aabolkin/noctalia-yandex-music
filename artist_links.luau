@@ -1,42 +1,31 @@
 --!nonstrict
--- One clickable name per credited artist. A row never shrinks a label, so
--- each name gets its share of the width as maxWidth and elides inside it.
-
-local CHAR_EM = 0.6   -- rough glyph width, in units of the font size
+-- One clickable name per credited artist. Each name takes a share of the
+-- row and elides when the widget is narrower than the full credit line.
 
 local M = {}
 
--- opts: artists ({ id, name }[]), width (px for the whole line), fontSize,
--- color, key, onOpen(artistId)
+-- opts: artists ({ id, name }[]), fontSize, color, key, onOpen(artistId)
 function M.line(opts)
   local artists = opts.artists
-  local size = opts.fontSize
-  local gap = 4
-  local free = opts.width - gap * (#artists - 1)
-
-  local names, lengths, total = {}, {}, 0
-  for index, artist in ipairs(artists) do
-    -- The comma rides on the name before it: a label of its own would get
-    -- the gap on both sides.
-    names[index] = tostring(artist.name) .. (index < #artists and "," or "")
-    lengths[index] = utf8.len(names[index]) or #names[index]
-    total += lengths[index]
-  end
-  local fits = total * size * CHAR_EM <= free
-
   local parts = {}
   for index, artist in ipairs(artists) do
-    local share = fits and free or math.max(24, math.floor(free * lengths[index] / total))
+    local name = tostring(artist.name) .. (index < #artists and "," or "")
     local id = tostring(artist.id)
     table.insert(parts, ui.column({
       key = opts.key .. "-" .. id,
+      flexGrow = 1,
       onClick = function() opts.onOpen(id) end,
     }, {
-      ui.label({ text = names[index], fontSize = size, color = opts.color,
-                 maxLines = 1, maxWidth = share }),
+      ui.label({
+        text = name,
+        fontSize = opts.fontSize,
+        color = opts.color,
+        maxLines = 1,
+        flexGrow = 1,
+      }),
     }))
   end
-  return ui.row({ key = opts.key, gap = gap, align = "center" }, parts)
+  return ui.row({ key = opts.key, gap = 4, align = "center", flexGrow = 1 }, parts)
 end
 
 return M
